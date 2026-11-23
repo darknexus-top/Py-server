@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — INFINITY NETWORK{% endblock %}
+{% block header_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="h4 fw-semibold mb-1">Platform Telemetry &amp; Gateway Status</h1>
+    <p class="small text-muted-custom mb-0">Live request counters, integration states, and redacted audit activity.</p>
+  </div>
+  <button id="probeHealthBtn" type="button" class="btn btn-sm btn-outline-light">
+    <i class="bi bi-arrow-repeat me-1"></i>Run Health Check
+  </button>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl">
+    <div class="surface-card p-3 h-100">
+      <div class="small text-muted-custom mb-1">Server Status</div>
+      <div id="statOnline" class="fs-5 fw-semibold text-success">Online</div>
+      <div id="statSseState" class="small text-muted-custom font-mono-tabular">Checking...</div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl">
+    <div class="surface-card p-3 h-100">
+      <div class="small text-muted-custom mb-1">Live Uptime</div>
+      <div id="statUptime" class="fs-5 fw-semibold font-mono-tabular">00:00:00</div>
+      <div class="small text-muted-custom">Continuous clock</div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl">
+    <div class="surface-card p-3 h-100">
+      <div class="small text-muted-custom mb-1">API Requests</div>
+      <div id="statTotal" class="fs-5 fw-semibold font-mono-tabular">0</div>
+      <div id="statLatency" class="small text-muted-custom font-mono-tabular">Avg 0 ms</div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl">
+    <div class="surface-card p-3 h-100">
+      <div class="small text-muted-custom mb-1">Successful</div>
+      <div id="statSuccess" class="fs-5 fw-semibold text-success font-mono-tabular">0</div>
+      <div class="small text-muted-custom">2xx-3xx responses</div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl">
+    <div class="surface-card p-3 h-100">
+      <div class="small text-muted-custom mb-1">Failed</div>
+      <div id="statFailed" class="fs-5 fw-semibold text-danger font-mono-tabular">0</div>
+      <div class="small text-muted-custom">4xx-5xx responses</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="surface-card p-4 d-flex align-items-start justify-content-between gap-3">
+      <div>
+        <div class="small text-muted-custom mb-1">Financial Identity · <span id="nagadMode" class="text-info font-mono-tabular">Mock</span></div>
+        <h2 class="h6 fw-semibold mb-1">Nagad Authorized API</h2>
+        <p class="small text-muted-custom mb-0">Configurable authorized check endpoint with server-side device fingerprint.</p>
+      </div>
+      <a href="/Nagat" class="btn btn-sm btn-outline-light flex-shrink-0">Open</a>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="surface-card p-4 d-flex align-items-start justify-content-between gap-3">
+      <div>
+        <div class="small text-muted-custom mb-1">Caller Verification · <span id="tcMode" class="text-info font-mono-tabular">Mock</span></div>
+        <h2 class="h6 fw-semibold mb-1">Truecaller Lookup API</h2>
+        <p class="small text-muted-custom mb-0">E.164 phone lookup with input validation and mock mode.</p>
+      </div>
+      <a href="/Truecaller" class="btn btn-sm btn-outline-light flex-shrink-0">Open</a>
+    </div>
+  </div>
+</div>
+
+<div class="surface-card overflow-hidden">
+  <div class="px-4 py-3 d-flex align-items-center justify-content-between" style="border-bottom: 1px solid rgba(148,163,184,0.14);">
+    <h2 class="h6 fw-semibold mb-0">Recent API Activity</h2>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark-custom table-hover mb-0 small">
+      <thead>
+        <tr class="text-muted-custom">
+          <th>Method</th>
+          <th>Endpoint</th>
+          <th>Module</th>
+          <th>Actor</th>
+          <th class="text-end">Status</th>
+          <th class="text-end">Latency</th>
+        </tr>
+      </thead>
+      <tbody id="activityTableBody">
+        <tr><td colspan="6" class="text-center text-muted-custom py-4">Sign in to stream live activity logs.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  let uptimeSec = 0;
+  setInterval(() => {
+    if (uptimeSec > 0) {
+      uptimeSec += 1;
+      document.getElementById("statUptime").textContent = window.InfinityUI.formatUptime(uptimeSec);
+    }
+  }, 1000);
+
+  function renderSnapshot(snap) {
+    uptimeSec = snap.uptime_seconds || 0;
+    document.getElementById("statUptime").textContent = window.InfinityUI.formatUptime(uptimeSec);
+    document.getElementById("statTotal").textContent = snap.metrics.total_requests;
+    document.getElementById("statSuccess").textContent = snap.metrics.success_requests;
+    document.getElementById("statFailed").textContent = snap.metrics.failed_requests;
+    document.getElementById("statLatency").textContent = `Avg ${snap.metrics.avg_latency_ms} ms`;
+    document.getElementById("nagadMode").textContent = snap.integrations.nagad.mode === "live" ? "Live" : "Mock";
+    document.getElementById("tcMode").textContent = snap.integrations.truecaller.mode === "live" ? "Live" : "Mock";
+
+    const tbody = document.getElementById("activityTableBody");
+    if (snap.recent_logs && snap.recent_logs.length > 0) {
+      tbody.replaceChildren();
+      snap.recent_logs.forEach((row) => {
+        const tr = document.createElement("tr");
+        const tdMethod = document.createElement("td");
+        tdMethod.className = "font-mono-tabular text-info";
+        tdMethod.textContent = row.method;
+        const tdPath = document.createElement("td");
+        tdPath.className = "font-mono-tabular";
+        tdPath.textContent = row.path;
+        const tdMod = document.createElement("td");
+        tdMod.textContent = row.integration;
+        const tdActor = document.createElement("td");
+        tdActor.className = "font-mono-tabular text-muted-custom";
+        tdActor.textContent = row.actor;
+        const tdStatus = document.createElement("td");
+        tdStatus.className = `text-end font-mono-tabular ${row.status_code < 400 ? "text-success" : "text-danger"}`;
+        tdStatus.textContent = row.status_code;
+        const tdLat = document.createElement("td");
+        tdLat.className = "text-end font-mono-tabular text-muted-custom";
+        tdLat.textContent = `${row.latency_ms} ms`;
+        tr.append(tdMethod, tdPath, tdMod, tdActor, tdStatus, tdLat);
+        tbody.appendChild(tr);
+      });
+    }
+  }
+
+  window.InfinityUI.apiFetch("/api/v1/status").then((res) => {
+    if (res.ok) renderSnapshot(res.data);
+  });
+
+  const es = new EventSource("/api/v1/stream");
+  es.onopen = () => {
+    document.getElementById("statSseState").textContent = "SSE live stream";
+  };
+  es.addEventListener("snapshot", (ev) => {
+    renderSnapshot(JSON.parse(ev.data));
+  });
+  es.addEventListener("heartbeat", (ev) => {
+    const hb = JSON.parse(ev.data);
+    uptimeSec = hb.uptime_seconds;
+  });
+  es.onerror = () => {
+    document.getElementById("statSseState").textContent = "HTTP polling / Sign in";
+  };
+
+  document.getElementById("probeHealthBtn").addEventListener("click", async () => {
+    const res = await window.InfinityUI.apiFetch("/api/v1/health");
+    if (res.ok) {
+      window.InfinityUI.toast("Health check passed", `Database ${res.data.database} (${res.latencyMs} ms)`, "success");
+    } else {
+      window.InfinityUI.toast("Health check failed", `HTTP ${res.status}`, "error");
+    }
+  });
+})();
+</script>
+{% endblock %}

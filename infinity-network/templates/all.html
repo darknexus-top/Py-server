@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}All Integrations &amp; API Tester — INFINITY NETWORK{% endblock %}
+{% block header_title %}All Integrations{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="surface-card p-4 h-100 d-flex flex-column justify-content-between">
+      <div>
+        <div class="small text-muted-custom mb-1">Financial Identity · <span class="text-info font-mono-tabular">{{ nagad.mode|upper }}</span></div>
+        <h2 class="h6 fw-semibold">Nagad Authorized Gateway</h2>
+        <p class="small text-muted-custom">MSISDN login eligibility verification via configurable authorized endpoints.</p>
+      </div>
+      <a href="/Nagat" class="btn btn-sm btn-outline-light align-self-start">Open Integration</a>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="surface-card p-4 h-100 d-flex flex-column justify-content-between">
+      <div>
+        <div class="small text-muted-custom mb-1">Caller Verification · <span class="text-info font-mono-tabular">{{ truecaller.mode|upper }}</span></div>
+        <h2 class="h6 fw-semibold">Truecaller Lookup</h2>
+        <p class="small text-muted-custom">Authorized E.164 directory lookup with validation and mock mode.</p>
+      </div>
+      <a href="/Truecaller" class="btn btn-sm btn-outline-light align-self-start">Open Integration</a>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="surface-card p-4">
+      <h2 class="h6 fw-semibold mb-3">API v1 Reference</h2>
+      <ul class="list-unstyled small font-mono-tabular mb-0 d-flex flex-column gap-2">
+        <li><span class="text-info">GET</span> /api/v1/health</li>
+        <li><span class="text-info">GET</span> /api/v1/status</li>
+        <li><span class="text-info">GET/POST</span> /api/v1/me</li>
+        <li><span class="text-info">GET/POST</span> /api/v1/nagad/status</li>
+        <li><span class="text-info">GET/POST</span> /api/v1/nagad/check</li>
+        <li><span class="text-info">GET/POST</span> /api/v1/truecaller/status</li>
+        <li><span class="text-info">GET/POST</span> /api/v1/truecaller/lookup</li>
+        <li><span class="text-info">GET/POST</span> /api/v1/integrations</li>
+        <li><span class="text-info">GET/POST</span> /api/v1/logs</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="surface-card p-4 mb-3">
+      <h2 class="h6 fw-semibold mb-3">Interactive API Tester</h2>
+      <form id="apiTesterForm">
+        <div class="input-group mb-3">
+          <select id="testerMethod" class="form-select" style="max-width: 110px;">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+          </select>
+          <input id="testerPath" type="text" class="form-control font-mono-tabular" value="/api/v1/health">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">JSON Body (for POST)</label>
+          <textarea id="testerBody" class="form-control font-mono-tabular" rows="3">{"msisdn": "01625116266"}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary-accent btn-sm">Send Request</button>
+      </form>
+    </div>
+    <pre id="testerResponse" class="json-viewer">{ "hint": "Send a request to inspect the JSON response." }</pre>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  document.getElementById("apiTesterForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const method = document.getElementById("testerMethod").value;
+    const path = document.getElementById("testerPath").value;
+    let body = undefined;
+    if (method === "POST") {
+      try {
+        body = JSON.parse(document.getElementById("testerBody").value);
+      } catch (_) {
+        window.InfinityUI.toast("Invalid JSON", "Check request body syntax.", "error");
+        return;
+      }
+    }
+    const res = await window.InfinityUI.apiFetch(path, { method, body });
+    document.getElementById("testerResponse").textContent = JSON.stringify(res.data, null, 2);
+  });
+})();
+</script>
+{% endblock %}

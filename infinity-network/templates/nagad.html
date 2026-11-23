@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Nagad Integration — INFINITY NETWORK{% endblock %}
+{% block header_title %}Nagad Integration{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <h1 class="h4 fw-semibold mb-1">Nagad Authorized Integration</h1>
+  <p class="small text-muted-custom mb-0">
+    Device Fingerprint: <code class="text-info">{{ nagad.credentials_configured.device_fingerprint }}</code> · Mode:
+    <code class="text-info">{{ nagad.mode|upper }}</code>
+  </p>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="surface-card p-4 mb-4">
+      <h2 class="h6 fw-semibold mb-3">MSISDN Status Check</h2>
+      <form id="nagadCheckForm">
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">MSISDN (11-digit BD)</label>
+          <input id="nagadMsisdn" type="text" class="form-control font-mono-tabular" value="01625116266" required>
+        </div>
+        <button type="submit" class="btn btn-primary-accent w-100">Check User Status</button>
+      </form>
+    </div>
+    <pre id="nagadResponsePre" class="json-viewer">{ "hint": "Run a check to view the JSON response." }</pre>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="surface-card p-4">
+      <h2 class="h6 fw-semibold mb-3">Configurable Gateway Headers &amp; Endpoint</h2>
+      <form id="nagadConfigForm" class="row g-3">
+        <div class="col-12">
+          <label class="form-label small text-muted-custom">Mode</label>
+          <select id="nagadModeSelect" class="form-select">
+            <option value="mock" {% if nagad.mode == 'mock' %}selected{% endif %}>Mock Sandbox</option>
+            <option value="live" {% if nagad.mode == 'live' %}selected{% endif %}>Live Authorized</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small text-muted-custom">Base URL</label>
+          <input id="nagadBaseUrl" type="url" class="form-control font-mono-tabular" value="{{ nagad.base_url }}" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label small text-muted-custom">Check Path</label>
+          <input id="nagadCheckPath" type="text" class="form-control font-mono-tabular" value="{{ nagad.check_path }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted-custom">X-KM-User-AspId</label>
+          <input id="nagadAspId" type="text" class="form-control font-mono-tabular" value="{{ nagad.headers_preview['X-KM-User-AspId'] }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted-custom">X-KM-User-Agent</label>
+          <input id="nagadUserAgent" type="text" class="form-control font-mono-tabular" value="{{ nagad.headers_preview['X-KM-User-Agent'] }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted-custom">X-KM-Accept-language</label>
+          <input id="nagadLang" type="text" class="form-control font-mono-tabular" value="{{ nagad.headers_preview['X-KM-Accept-language'] }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted-custom">X-KM-AppCode</label>
+          <input id="nagadAppCode" type="text" class="form-control font-mono-tabular" value="{{ nagad.headers_preview['X-KM-AppCode'] }}">
+        </div>
+        <div class="col-md-8">
+          <label class="form-label small text-muted-custom">User-Agent</label>
+          <input id="nagadHttpUa" type="text" class="form-control font-mono-tabular" value="{{ nagad.headers_preview['User-Agent'] }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small text-muted-custom">Timeout (s)</label>
+          <input id="nagadTimeout" type="number" min="1" max="30" class="form-control font-mono-tabular" value="{{ nagad.timeout_seconds }}">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary-accent">Save Configuration</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  document.getElementById("nagadCheckForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msisdn = document.getElementById("nagadMsisdn").value;
+    const res = await window.InfinityUI.apiFetch(`/api/v1/nagad/check?msisdn=${encodeURIComponent(msisdn)}`);
+    document.getElementById("nagadResponsePre").textContent = JSON.stringify(res.data, null, 2);
+    window.InfinityUI.toast(res.ok ? "Nagad check completed" : "Check error", `HTTP ${res.status}`, res.ok ? "success" : "error");
+  });
+
+  document.getElementById("nagadConfigForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const res = await window.InfinityUI.apiFetch("/api/v1/nagad/status", {
+      method: "POST",
+      body: {
+        mockMode: document.getElementById("nagadModeSelect").value === "mock",
+        baseUrl: document.getElementById("nagadBaseUrl").value,
+        checkPath: document.getElementById("nagadCheckPath").value,
+        userAspId: document.getElementById("nagadAspId").value,
+        userAgent: document.getElementById("nagadUserAgent").value,
+        acceptLanguage: document.getElementById("nagadLang").value,
+        appCode: document.getElementById("nagadAppCode").value,
+        httpUserAgent: document.getElementById("nagadHttpUa").value,
+        timeoutSeconds: Number(document.getElementById("nagadTimeout").value),
+      },
+    });
+    window.InfinityUI.toast(res.ok ? "Nagad config saved" : "Error saving config", res.data.message || "", res.ok ? "success" : "error");
+  });
+})();
+</script>
+{% endblock %}

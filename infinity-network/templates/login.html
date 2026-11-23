@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Admin Sign In — INFINITY NETWORK{% endblock %}
+{% block header_title %}{{ 'First-Run Admin Setup' if setup_needed else 'Admin Sign In' }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-md-6 col-lg-4">
+    <div class="surface-card p-4">
+      <h1 class="h5 fw-semibold mb-1">{{ 'First-Run Admin Setup' if setup_needed else 'Admin Sign In' }}</h1>
+      <p class="small text-muted-custom mb-4">
+        {{ 'Claim administrator credentials for this instance.' if setup_needed else 'Authenticate to manage integrations and API keys.' }}
+      </p>
+
+      <form method="post" action="/login">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Username</label>
+          <input type="text" name="username" class="form-control" value="admin" required>
+        </div>
+
+        {% if setup_needed %}
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Display Name</label>
+          <input type="text" name="display_name" class="form-control" value="Platform Administrator" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Email</label>
+          <input type="email" name="email" class="form-control" value="admin@infinity.network" required>
+        </div>
+        {% endif %}
+
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Password</label>
+          <input type="password" name="password" class="form-control" minlength="{{ 8 if setup_needed else 1 }}" required>
+        </div>
+
+        {% if setup_needed %}
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Confirm Password</label>
+          <input type="password" name="confirm_password" class="form-control" minlength="8" required>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary-accent w-100">
+          {{ 'Claim Admin Account' if setup_needed else 'Sign In' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Truecaller Integration — INFINITY NETWORK{% endblock %}
+{% block header_title %}Truecaller Integration{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <h1 class="h4 fw-semibold mb-1">Truecaller Authorized Integration</h1>
+  <p class="small text-muted-custom mb-0">
+    API Key: <code class="text-info">{{ truecaller.credentials_configured.api_key }}</code> · Mode:
+    <code class="text-info">{{ truecaller.mode|upper }}</code>
+  </p>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="surface-card p-4 mb-4">
+      <h2 class="h6 fw-semibold mb-3">Phone Lookup</h2>
+      <form id="tcLookupForm">
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Phone (E.164 or 11-digit BD)</label>
+          <input id="tcPhone" type="text" class="form-control font-mono-tabular" value="+8801625116266" required>
+        </div>
+        <button type="submit" class="btn btn-primary-accent w-100">Run Lookup</button>
+      </form>
+    </div>
+
+    <div class="surface-card p-4">
+      <h2 class="h6 fw-semibold mb-3">Provider Configuration</h2>
+      <form id="tcConfigForm">
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Mode</label>
+          <select id="tcModeSelect" class="form-select">
+            <option value="mock" {% if truecaller.mode == 'mock' %}selected{% endif %}>Mock Sandbox</option>
+            <option value="live" {% if truecaller.mode == 'live' %}selected{% endif %}>Live Authorized</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Authorized API URL</label>
+          <input id="tcApiUrl" type="url" class="form-control font-mono-tabular" value="{{ truecaller.api_url if truecaller.api_url.startswith('http') else '' }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Timeout (s)</label>
+          <input id="tcTimeout" type="number" min="1" max="30" class="form-control font-mono-tabular" value="{{ truecaller.timeout_seconds }}">
+        </div>
+        <button type="submit" class="btn btn-primary-accent">Save Configuration</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <pre id="tcResponsePre" class="json-viewer">{ "hint": "Execute a lookup to inspect the JSON response." }</pre>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  document.getElementById("tcLookupForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const phone = document.getElementById("tcPhone").value;
+    const res = await window.InfinityUI.apiFetch(`/api/v1/truecaller/lookup?phone=${encodeURIComponent(phone)}`);
+    document.getElementById("tcResponsePre").textContent = JSON.stringify(res.data, null, 2);
+    window.InfinityUI.toast(res.ok ? "Lookup completed" : "Lookup error", `HTTP ${res.status}`, res.ok ? "success" : "error");
+  });
+
+  document.getElementById("tcConfigForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const res = await window.InfinityUI.apiFetch("/api/v1/truecaller/status", {
+      method: "POST",
+      body: {
+        mockMode: document.getElementById("tcModeSelect").value === "mock",
+        apiUrl: document.getElementById("tcApiUrl").value,
+        timeoutSeconds: Number(document.getElementById("tcTimeout").value),
+      },
+    });
+    window.InfinityUI.toast(res.ok ? "Configuration saved" : "Error", res.data.message || "", res.ok ? "success" : "error");
+  });
+})();
+</script>
+{% endblock %}

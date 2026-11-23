@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Profile &amp; Keys — INFINITY NETWORK{% endblock %}
+{% block header_title %}Profile &amp; API Keys{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="surface-card p-4">
+      <h2 class="h6 fw-semibold mb-3">Administrator Profile</h2>
+      <form id="profileForm">
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Display Name</label>
+          <input id="profileDisplayName" type="text" class="form-control" value="{{ current_user.display_name }}" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small text-muted-custom">Email</label>
+          <input id="profileEmail" type="email" class="form-control" value="{{ current_user.email }}" required>
+        </div>
+        <button type="submit" class="btn btn-primary-accent btn-sm w-100">Save Profile</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="surface-card p-4">
+      <h2 class="h6 fw-semibold mb-3">Programmatic API Keys</h2>
+      <form id="createKeyForm" class="d-flex gap-2 mb-3">
+        <input id="keyLabelInput" type="text" class="form-control" placeholder="Key label (e.g. Production Worker)">
+        <button type="submit" class="btn btn-primary-accent btn-sm flex-shrink-0">Generate Key</button>
+      </form>
+
+      <div id="revealedKeyBox" class="alert alert-success d-none font-mono-tabular small"></div>
+
+      <div class="table-responsive">
+        <table class="table table-dark-custom small mb-0">
+          <thead>
+            <tr class="text-muted-custom">
+              <th>Label</th>
+              <th>Prefix</th>
+              <th>Status</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for key in api_keys %}
+            <tr>
+              <td>{{ key.label }}</td>
+              <td class="font-mono-tabular text-info">{{ key.key_prefix }}••••</td>
+              <td class="font-mono-tabular {{ 'text-danger' if key.revoked else 'text-success' }}">
+                {{ 'Revoked' if key.revoked else 'Active' }}
+              </td>
+              <td class="text-end">
+                {% if not key.revoked %}
+                <button type="button" class="btn btn-sm btn-outline-danger revoke-key-btn" data-key-id="{{ key.id }}">Revoke</button>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-muted-custom text-center py-3">No API keys created yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  document.getElementById("profileForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const res = await window.InfinityUI.apiFetch("/api/v1/me", {
+      method: "POST",
+      body: {
+        action: "update_profile",
+        displayName: document.getElementById("profileDisplayName").value,
+        email: document.getElementById("profileEmail").value,
+      },
+    });
+    window.InfinityUI.toast(res.ok ? "Profile updated" : "Update failed", res.data.message || "", res.ok ? "success" : "error");
+  });
+
+  document.getElementById("createKeyForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const res = await window.InfinityUI.apiFetch("/api/v1/me", {
+      method: "POST",
+      body: { action: "create_key", label: document.getElementById("keyLabelInput").value || "API Key" },
+    });
+    if (res.ok && res.data.api_key) {
+      const box = document.getElementById("revealedKeyBox");
+      box.textContent = "New API Key (copy now): " + res.data.api_key;
+      box.classList.remove("d-none");
+      window.InfinityUI.toast("API Key generated", "Store it safely.", "success");
+    }
+  });
+
+  document.querySelectorAll(".revoke-key-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const keyId = Number(btn.getAttribute("data-key-id"));
+      const res = await window.InfinityUI.apiFetch("/api/v1/me", {
+        method: "POST",
+        body: { action: "revoke_key", keyId },
+      });
+      if (res.ok) window.location.reload();
+    });
+  });
+})();
+</script>
+{% endblock %}

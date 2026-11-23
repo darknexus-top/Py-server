@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Server Settings — INFINITY NETWORK{% endblock %}
+{% block header_title %}Server Settings{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-7">
+    <div class="surface-card p-4">
+      <h2 class="h6 fw-semibold mb-3">Security &amp; Gateway Settings</h2>
+      <form id="settingsForm">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small text-muted-custom">Rate Limit (req/min)</label>
+            <input id="cfgRateLimit" type="number" min="5" max="5000" class="form-control font-mono-tabular" value="{{ settings.get('rate_limit_per_minute', '60') }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small text-muted-custom">Session TTL (minutes)</label>
+            <input id="cfgSessionTtl" type="number" min="5" max="1440" class="form-control font-mono-tabular" value="{{ settings.get('session_ttl_minutes', '60') }}">
+          </div>
+        </div>
+
+        <div class="form-check form-switch mb-2">
+          <input class="form-check-input" type="checkbox" id="cfgRedaction" {% if settings.get('log_redaction_enabled', 'true') == 'true' %}checked{% endif %}>
+          <label class="form-check-label small" for="cfgRedaction">Redact sensitive credentials in audit logs</label>
+        </div>
+        <div class="form-check form-switch mb-2">
+          <input class="form-check-input" type="checkbox" id="cfgNagadMock" {% if settings.get('nagad_mock_mode', 'true') == 'true' %}checked{% endif %}>
+          <label class="form-check-label small" for="cfgNagadMock">Nagad Mock Mode</label>
+        </div>
+        <div class="form-check form-switch mb-4">
+          <input class="form-check-input" type="checkbox" id="cfgTcMock" {% if settings.get('truecaller_mock_mode', 'true') == 'true' %}checked{% endif %}>
+          <label class="form-check-label small" for="cfgTcMock">Truecaller Mock Mode</label>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <button id="clearLogsBtn" type="button" class="btn btn-sm btn-outline-danger">Clear Audit Logs</button>
+          <button type="submit" class="btn btn-primary-accent btn-sm">Save Settings</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  document.getElementById("settingsForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const res = await window.InfinityUI.apiFetch("/api/v1/settings", {
+      method: "POST",
+      body: {
+        rate_limit_per_minute: Number(document.getElementById("cfgRateLimit").value),
+        session_ttl_minutes: Number(document.getElementById("cfgSessionTtl").value),
+        log_redaction_enabled: document.getElementById("cfgRedaction").checked,
+        nagad_mock_mode: document.getElementById("cfgNagadMock").checked,
+        truecaller_mock_mode: document.getElementById("cfgTcMock").checked,
+      },
+    });
+    window.InfinityUI.toast(res.ok ? "Settings saved" : "Error", res.data.message || "", res.ok ? "success" : "error");
+  });
+
+  document.getElementById("clearLogsBtn").addEventListener("click", async () => {
+    const res = await window.InfinityUI.apiFetch("/api/v1/logs", {
+      method: "POST",
+      body: { action: "clear" },
+    });
+    window.InfinityUI.toast(res.ok ? "Audit logs cleared" : "Error", "", res.ok ? "info" : "error");
+  });
+})();
+</script>
+{% endblock %}
